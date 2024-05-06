@@ -33,10 +33,14 @@ type KeyPair struct {
 	KeyFile  string
 }
 
+func (kp KeyPair) IsEmpty() bool {
+	return kp.CertFile == "" && kp.KeyFile == ""
+}
+
 // LoadTLSCertificate reads and parses the key pair files with
 // [tls.LoadX509KeyPair]. The files must contain valid PEM encoded data.
 func (kp KeyPair) LoadTLSCertificate() (*tls.Certificate, error) {
-	if kp.CertFile == "" && kp.KeyFile == "" {
+	if kp.IsEmpty() {
 		return nil, nil
 	}
 
@@ -46,7 +50,7 @@ func (kp KeyPair) LoadTLSCertificate() (*tls.Certificate, error) {
 
 // ApplyTo adds the [KeyPair] certificate to the provided [tls.Config].
 func (kp KeyPair) ApplyTo(conf *tls.Config, target Target) error {
-	if conf == nil {
+	if conf == nil || kp.IsEmpty() {
 		return nil
 	}
 	if conf.GetCertificate == nil && target == TargetServer {
@@ -71,11 +75,15 @@ type PemBlocks struct {
 	Key  []byte
 }
 
+func (pb PemBlocks) IsEmpty() bool {
+	return len(pb.Cert) == 0 && len(pb.Key) == 0
+}
+
 // LoadTLSCertificate parses the [PemBlocks.Cert] and [PemBlocks.Key] blocks
 // using [tls.X509KeyPair]. The []byte values must contain valid PEM encoded
 // data.
 func (pb PemBlocks) LoadTLSCertificate() (*tls.Certificate, error) {
-	if len(pb.Cert) == 0 && len(pb.Key) == 0 {
+	if pb.IsEmpty() {
 		return nil, nil
 	}
 
