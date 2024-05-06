@@ -6,9 +6,7 @@ package easytls
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"github.com/go-pogo/errors"
-	"os"
 	"strconv"
 )
 
@@ -31,10 +29,12 @@ func (e InvalidTarget) Error() string {
 
 var _ Option = (*Config)(nil)
 
+// Config is a general config struct which can be used to configure or create
+// a [tls.Config] for clients or servers.
 type Config struct {
 	// CACertFile is the path to the root certificate authority file. It is
 	// used to verify the client's (whom connect to the server) certificate.
-	CACertFile string `env:"" flag:"tls-ca"`
+	CACertFile CertificateFile `env:"" flag:"tls-ca"`
 	// CertFile is the path to the server's certificate file.
 	CertFile string `env:"" flag:"tls-cert"`
 	// KeyFile is the path to the server's private key file.
@@ -48,11 +48,15 @@ type Config struct {
 	InsecureSkipVerify bool `env:""`
 }
 
+// Client creates a [tls.Config] for client connections. It is based on
+// [DefaultTLSConfig], with [Config] applied to it.
 func (tc Config) Client() (*tls.Config, error) {
 	conf := DefaultTLSConfig()
 	return conf, tc.ApplyTo(conf, TargetClient)
 }
 
+// Server creates a [tls.Config] for server connections. It is based on
+// [DefaultTLSConfig], with [Config] applied to it.
 func (tc Config) Server() (*tls.Config, error) {
 	conf := DefaultTLSConfig()
 	return conf, tc.ApplyTo(conf, TargetServer)
@@ -65,20 +69,13 @@ func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 	}
 
 	if tc.CACertFile != "" {
-		data, err := os.ReadFile(tc.CACertFile)
+		pool, err := getCertPool(conf, target)
 		if err != nil {
+			return err
+		}
+		if err = LoadAndAdd(pool, tc.CACertFile); err != nil {
 			return errors.WithKind(err, CACertError)
 		}
-		cert, err := x509.ParseCertificate(data)
-		if err != nil {
-			return errors.WithKind(err, CACertError)
-		}
-
-		pool := getCertPool(conf, target)
-		if pool == nil {
-			return errors.WithStack(&InvalidTarget{Target: target})
-		}
-		pool.AddCert(cert)
 	}
 
 	conf.InsecureSkipVerify = tc.InsecureSkipVerify

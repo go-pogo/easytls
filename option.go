@@ -7,6 +7,7 @@ package easytls
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/go-pogo/errors"
 )
 
 // An Option can be applied to a [tls.Config].
@@ -26,7 +27,11 @@ func WithTLSRootCAs(certs ...tls.Certificate) Option {
 			return nil
 		}
 
-		pool := getCertPool(conf, target)
+		pool, err := getCertPool(conf, target)
+		if err != nil {
+			return err
+		}
+
 		for _, cert := range certs {
 			x, err := x509.ParseCertificate(cert.Certificate[0])
 			if err != nil {
@@ -38,18 +43,21 @@ func WithTLSRootCAs(certs ...tls.Certificate) Option {
 	})
 }
 
-func getCertPool(conf *tls.Config, target Target) *x509.CertPool {
-	if target == TargetServer {
+func getCertPool(conf *tls.Config, target Target) (*x509.CertPool, error) {
+	switch target {
+	case TargetServer:
 		if conf.ClientCAs == nil {
 			conf.ClientCAs = x509.NewCertPool()
 		}
-		return conf.ClientCAs
-	}
-	if target == TargetClient {
+		return conf.ClientCAs, nil
+
+	case TargetClient:
 		if conf.RootCAs == nil {
 			conf.RootCAs = x509.NewCertPool()
 		}
-		return conf.RootCAs
+		return conf.RootCAs, nil
+
+	default:
+		return nil, errors.WithStack(&InvalidTarget{Target: target})
 	}
-	return nil
 }

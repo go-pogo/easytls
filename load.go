@@ -6,6 +6,7 @@ package easytls
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"github.com/go-pogo/errors"
 )
 
@@ -13,94 +14,67 @@ const (
 	LoadCertificateError = "failed to load certificate"
 )
 
-// CertificateLoader loads a [tls.Certificate] from any source.
-type CertificateLoader interface {
-	LoadCertificate() (*tls.Certificate, error)
+// TLSCertificateLoader loads a [tls.Certificate] from any source.
+type TLSCertificateLoader interface {
+	LoadTLSCertificate() (*tls.Certificate, error)
 }
 
-// GetCertificate can be used in [tls.Config] to load a certificate when it's
-// requested for.
-func GetCertificate(cl CertificateLoader) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-		cert, err := cl.LoadCertificate()
-		if err != nil {
-			return nil, errors.WithStack(err)
+// LoadAndAppend loads the certificates from the provided
+// [TLSCertificateLoader]s and appends them to the provided [tls.Certificate]
+// slice.
+// Errors that occur are grouped together and returned as a single error after
+// all certificates have been loaded.
+func LoadAndAppend(list []tls.Certificate, certs ...TLSCertificateLoader) ([]tls.Certificate, error) {
+	var err error
+	for _, c := range certs {
+		if c == nil {
+			continue
 		}
-		return cert, nil
+
+		var loadErr error
+		if list, loadErr = loadAndAppend(list, c); loadErr != nil {
+			err = errors.Append(err, loadErr)
+			continue
+		}
 	}
+	return list, err
 }
 
-var (
-	_ CertificateLoader = (*KeyPair)(nil)
-	_ Option            = (*KeyPair)(nil)
-)
-
-// KeyPair contains the paths to a public/private key pair of files.
-type KeyPair struct {
-	CertFile string
-	KeyFile  string
+func loadAndAppend(list []tls.Certificate, c TLSCertificateLoader) ([]tls.Certificate, error) {
+	if cert, err := c.LoadTLSCertificate(); err != nil {
+		return list, errors.WithStack(err)
+	} else if cert != nil {
+		list = append(list, *cert)
+	}
+	return list, nil
 }
 
-// LoadCertificate reads and parses the key pair files with
-// [tls.LoadX509KeyPair]. The files must contain PEM encoded data.
-func (kp KeyPair) LoadCertificate() (*tls.Certificate, error) {
-	if kp.CertFile == "" && kp.KeyFile == "" {
-		return nil, nil
-	}
-
-	c, err := tls.LoadX509KeyPair(kp.CertFile, kp.KeyFile)
-	return &c, errors.WithKind(err, LoadCertificateError)
+// X509CertificateLoader loads a [x509.Certificate] from any source.
+type X509CertificateLoader interface {
+	LoadX509Certificate() (*x509.Certificate, error)
 }
 
-// ApplyTo adds the [KeyPair] certificates to the provided [tls.Config].
-func (kp KeyPair) ApplyTo(conf *tls.Config, target Target) error {
-	if conf == nil {
-		return nil
+// LoadAndAdd loads the certificates from the provided [X509CertificateLoader]s
+// and adds them to the provided [x509.CertPool].
+// Errors that occur are grouped together and returned as a single error after
+// all certificates have been loaded.
+func LoadAndAdd(pool *x509.CertPool, certs ...X509CertificateLoader) error {
+	var err error
+	for _, cert := range certs {
+		c, loadErr := cert.LoadX509Certificate()
+		if loadErr != nil {
+			err = errors.Append(err, loadErr)
+			continue
+		}
+		pool.AddCert(c)
 	}
-	if conf.GetCertificate == nil && target == TargetServer {
-		conf.GetCertificate = GetCertificate(kp)
-		return nil
-	}
-
-	if c, err := kp.LoadCertificate(); err != nil {
-		return err
-	} else if c != nil {
-		conf.Certificates = append(conf.Certificates, *c)
-	}
-	return nil
+	return err
 }
 
-var (
-	_ CertificateLoader = (*PemBlocks)(nil)
-	_ Option            = (*PemBlocks)(nil)
-)
-
-// certPEMBlock, keyPEMBlock
-type PemBlocks struct {
-	Cert []byte
-	Key  []byte
-}
-
-// LoadCertificate parses the [PemBlocks.Cert] and [PemBlocks.Key] blocks
-// using [tls.X509KeyPair]. The []byte values must contain PEM encoded data.
-func (pb PemBlocks) LoadCertificate() (*tls.Certificate, error) {
-	if len(pb.Cert) == 0 && len(pb.Key) == 0 {
-		return nil, nil
+func LoadAndAddSystem(certs ...X509CertificateLoader) (*x509.CertPool, error) {
+	pool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
-
-	c, err := tls.X509KeyPair(pb.Cert, pb.Key)
-	return &c, errors.WithKind(err, LoadCertificateError)
-}
-
-// ApplyTo adds the [PemBlocks] certificates to the provided [tls.Config].
-func (pb PemBlocks) ApplyTo(conf *tls.Config, _ Target) error {
-	if conf == nil {
-		return nil
-	}
-	if c, err := pb.LoadCertificate(); err != nil {
-		return err
-	} else if c != nil {
-		conf.Certificates = append(conf.Certificates, *c)
-	}
-	return nil
+	return pool, LoadAndAdd(pool, certs...)
 }
