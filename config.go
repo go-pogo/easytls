@@ -69,13 +69,19 @@ func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 	}
 
 	if tc.CACertFile != "" {
+		cert, err := tc.CACertFile.LoadX509Certificate()
+		if err != nil {
+			return errors.WithKind(err, CACertError)
+		}
+		if err = ValidateCA(cert); err != nil {
+			return errors.WithKind(err, CACertError)
+		}
+
 		pool, err := getCertPool(conf, target)
 		if err != nil {
 			return err
 		}
-		if err = LoadAndAdd(pool, tc.CACertFile); err != nil {
-			return errors.WithKind(err, CACertError)
-		}
+		pool.AddCert(cert)
 	}
 
 	conf.InsecureSkipVerify = tc.InsecureSkipVerify
