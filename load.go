@@ -19,6 +19,11 @@ type TLSCertificateLoader interface {
 	LoadTLSCertificate() (*tls.Certificate, error)
 }
 
+// TLSCertificateLoaderFunc loads a [tls.Certificate] from any source.
+type TLSCertificateLoaderFunc func() (*tls.Certificate, error)
+
+func (fn TLSCertificateLoaderFunc) LoadTLSCertificate() (*tls.Certificate, error) { return fn() }
+
 // LoadAndAppend loads the certificates from the provided
 // [TLSCertificateLoader]s and appends them to the provided [tls.Certificate]
 // slice.
@@ -53,6 +58,11 @@ func loadAndAppend(list []tls.Certificate, c TLSCertificateLoader) ([]tls.Certif
 type X509CertificateLoader interface {
 	LoadX509Certificate() (*x509.Certificate, error)
 }
+
+// X509CertificateLoaderFunc loads a [x509.Certificate] from any source.
+type X509CertificateLoaderFunc func() (*x509.Certificate, error)
+
+func (fn X509CertificateLoaderFunc) LoadX509Certificate() (*x509.Certificate, error) { return fn() }
 
 // LoadAndAdd loads the certificates from the provided [X509CertificateLoader]s
 // and adds them to the provided [x509.CertPool].

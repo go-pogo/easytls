@@ -9,18 +9,6 @@ import (
 	"github.com/go-pogo/errors"
 )
 
-// GetCertificate can be used in [tls.Config] to load a certificate when it's
-// requested for.
-func GetCertificate(cl TLSCertificateLoader) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-		cert, err := cl.LoadTLSCertificate()
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		return cert, nil
-	}
-}
-
 var (
 	_ TLSCertificateLoader = (*KeyPair)(nil)
 	_ Option               = (*KeyPair)(nil)
@@ -64,25 +52,25 @@ func (kp KeyPair) ApplyTo(conf *tls.Config, target Target) error {
 }
 
 var (
-	_ TLSCertificateLoader = (*PemBlocks)(nil)
-	_ Option               = (*PemBlocks)(nil)
+	_ TLSCertificateLoader = (*PEMBlocks)(nil)
+	_ Option               = (*PEMBlocks)(nil)
 )
 
-// PemBlocks contains PEM encoded certificate and key data which can be loaded
+// PEMBlocks contains PEM encoded certificate and key data which can be loaded
 // using [KeyPair.LoadTLSCertificate].
-type PemBlocks struct {
+type PEMBlocks struct {
 	Cert []byte
 	Key  []byte
 }
 
-func (pb PemBlocks) IsEmpty() bool {
+func (pb PEMBlocks) IsEmpty() bool {
 	return len(pb.Cert) == 0 && len(pb.Key) == 0
 }
 
-// LoadTLSCertificate parses the [PemBlocks.Cert] and [PemBlocks.Key] blocks
+// LoadTLSCertificate parses the [PEMBlocks.Cert] and [PEMBlocks.Key] blocks
 // using [tls.X509KeyPair]. The []byte values must contain valid PEM encoded
 // data.
-func (pb PemBlocks) LoadTLSCertificate() (*tls.Certificate, error) {
+func (pb PEMBlocks) LoadTLSCertificate() (*tls.Certificate, error) {
 	if pb.IsEmpty() {
 		return nil, nil
 	}
@@ -91,8 +79,8 @@ func (pb PemBlocks) LoadTLSCertificate() (*tls.Certificate, error) {
 	return &c, errors.WithKind(err, LoadCertificateError)
 }
 
-// ApplyTo adds the [PemBlocks] certificates to the provided [tls.Config].
-func (pb PemBlocks) ApplyTo(conf *tls.Config, _ Target) error {
+// ApplyTo adds the [PEMBlocks] certificates to the provided [tls.Config].
+func (pb PEMBlocks) ApplyTo(conf *tls.Config, _ Target) error {
 	if conf == nil {
 		return nil
 	}

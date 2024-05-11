@@ -6,6 +6,7 @@ package easytls
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"github.com/go-pogo/errors"
 	"strconv"
 )
@@ -95,23 +96,38 @@ func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 	}.ApplyTo(conf, target)
 }
 
-// DefaultTLSConfig returns a modern preconfigured [tls.Config].
-func DefaultTLSConfig() *tls.Config {
-	return &tls.Config{
-		MinVersion: tls.VersionTLS12,
+const (
+	ErrNotMarkedAsCA   errors.Msg = "certificate is not marked as a CA certificate"
+	ErrMissingCertSign errors.Msg = "certificate is missing the cert sign flag"
+)
 
-		CurvePreferences: []tls.CurveID{
-			tls.CurveP256,
-			tls.X25519,
-		},
+// ValidateCA checks if the provided [x509.Certificate] can be used as CA
+// certificate.
+func ValidateCA(cert *x509.Certificate) error {
+	if !cert.IsCA {
+		return errors.New(ErrNotMarkedAsCA)
+	}
+	if cert.KeyUsage == 0 || cert.KeyUsage&x509.KeyUsageCertSign == 0 {
+		return errors.New(ErrMissingCertSign)
+	}
+	return nil
+}
 
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		},
+func getCertPool(conf *tls.Config, target Target) (*x509.CertPool, error) {
+	switch target {
+	case TargetServer:
+		if conf.ClientCAs == nil {
+			conf.ClientCAs = x509.NewCertPool()
+		}
+		return conf.ClientCAs, nil
+
+	case TargetClient:
+		if conf.RootCAs == nil {
+			conf.RootCAs = x509.NewCertPool()
+		}
+		return conf.RootCAs, nil
+
+	default:
+		return nil, errors.WithStack(&InvalidTarget{Target: target})
 	}
 }
