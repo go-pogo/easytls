@@ -86,3 +86,39 @@ func ClientCertificate() *x509.Certificate {
 	cert.NotAfter = cert.NotBefore.AddDate(1, 0, 0)
 	return &cert
 }
+
+func CopyMissingSubjectFields(src pkix.Name, dest *pkix.Name) {
+	if dest.Country == nil {
+		dest.Country = src.Country
+	}
+	if dest.Organization == nil {
+		dest.Organization = src.Organization
+	}
+	if dest.OrganizationalUnit == nil {
+		dest.OrganizationalUnit = src.OrganizationalUnit
+	}
+	if dest.Locality == nil {
+		dest.Locality = src.Locality
+	}
+	if dest.Province == nil {
+		dest.Province = src.Province
+	}
+	if dest.StreetAddress == nil {
+		dest.StreetAddress = src.StreetAddress
+	}
+	if dest.PostalCode == nil {
+		dest.PostalCode = src.PostalCode
+	}
+	if dest.SerialNumber == "" {
+		dest.SerialNumber = src.SerialNumber
+	}
+	if dest.CommonName == "" {
+		dest.CommonName = src.CommonName
+	}
+	if dest.Names == nil {
+		dest.Names = src.Names
+	}
+	if dest.ExtraNames == nil {
+		dest.ExtraNames = src.ExtraNames
+	}
+}
