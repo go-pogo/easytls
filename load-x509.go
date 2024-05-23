@@ -6,15 +6,25 @@ package easytls
 
 import (
 	"crypto/x509"
+	"encoding/pem"
+	"flag"
 	"github.com/go-pogo/errors"
 	"os"
 )
 
-var _ X509CertificateLoader = (*CertificateFile)(nil)
+var (
+	_ flag.Value            = (*CertificateFile)(nil)
+	_ X509CertificateLoader = (*CertificateFile)(nil)
+)
 
 // CertificateFile contains the path to an existing certificate file which can
 // be loaded using [CertificateFile.LoadX509Certificate].
 type CertificateFile string
+
+func (cf *CertificateFile) Set(s string) error {
+	*cf = CertificateFile(s)
+	return nil
+}
 
 func (cf CertificateFile) String() string { return string(cf) }
 
@@ -26,7 +36,9 @@ func (cf CertificateFile) LoadX509Certificate() (*x509.Certificate, error) {
 		return nil, errors.WithKind(err, LoadCertificateError)
 	}
 
-	cert, err := x509.ParseCertificate(data)
+	block, _ := pem.Decode(data)
+
+	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return nil, errors.WithKind(err, LoadCertificateError)
 	}
