@@ -33,12 +33,13 @@ var _ Option = (*Config)(nil)
 // Config is a general config struct which can be used to configure or create
 // a [tls.Config] for clients or servers.
 type Config struct {
-	// CACertFile is the path to the root certificate authority file. It is
-	// used to verify the client's (whom connect to the server) certificate.
+	// CACertFile is the path to the root certificate authority (CA) file. It
+	// is used to verify both client and server certificates are signed by the
+	// same CA.
 	CACertFile CertificateFile `env:"" flag:"tls-ca"`
-	// CertFile is the path to the server's certificate file.
+	// CertFile is the path to the certificate file.
 	CertFile string `env:"" flag:"tls-cert"`
-	// KeyFile is the path to the server's private key file.
+	// KeyFile is the path to the private key file.
 	KeyFile string `env:"" flag:"tls-key"`
 
 	// VerifyClient enables mutual tls authentication.
@@ -63,7 +64,8 @@ func (tc Config) Server() (*tls.Config, error) {
 	return conf, tc.ApplyTo(conf, TargetServer)
 }
 
-// ApplyTo applies the [Config] fields' values to the provided [tls.Config].
+// ApplyTo applies the [Config] fields' values to the provided [tls.Config] for
+// the specified [Target].
 func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 	if conf == nil {
 		return nil
@@ -90,10 +92,11 @@ func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 		conf.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
-	return KeyPair{
-		CertFile: tc.CertFile,
-		KeyFile:  tc.KeyFile,
-	}.ApplyTo(conf, target)
+	kp := KeyPair{CertFile: tc.CertFile, KeyFile: tc.KeyFile}
+	if err := kp.ApplyTo(conf, target); err != nil {
+		return err
+	}
+	return nil
 }
 
 const (
