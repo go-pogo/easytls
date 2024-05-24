@@ -36,13 +36,12 @@ type Config struct {
 	// CACertFile is the path to the root certificate authority (CA) file. It
 	// is used to verify both client and server certificates are signed by the
 	// same CA.
-	CACertFile CertificateFile `env:"" flag:"tls-ca"`
+	CACertFile CertificateFile `env:""`
 	// CertFile is the path to the certificate file.
-	CertFile string `env:"" flag:"tls-cert"`
+	CertFile string `env:""`
 	// KeyFile is the path to the private key file.
-	KeyFile string `env:"" flag:"tls-key"`
-
-	// VerifyClient enables mutual tls authentication.
+	KeyFile string `env:""`
+	// VerifyClient enables mutual TLS authentication.
 	VerifyClient bool `env:""`
 	// InsecureSkipVerify disabled all certificate verification and should only
 	// be used for testing. See [tls.Config.InsecureSkipVerify] for additional
