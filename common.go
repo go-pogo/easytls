@@ -82,7 +82,13 @@ func ClientCertificate() *x509.Certificate {
 	return &cert
 }
 
+const panicNilDestSubject = "easytls.CopyMissingSubjectFields: dest should not be nil"
+
 func CopyMissingSubjectFields(src pkix.Name, dest *pkix.Name) {
+	if dest == nil {
+		panic(panicNilDestSubject)
+	}
+
 	if dest.Country == nil {
 		dest.Country = src.Country
 	}
