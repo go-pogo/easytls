@@ -12,13 +12,16 @@ import (
 	"os"
 )
 
+const ErrNoCertificateInPEM errors.Msg = "failed to find \"CERTIFICATE\" PEM block in data"
+
 var (
 	_ flag.Value            = (*CertificateFile)(nil)
 	_ X509CertificateLoader = (*CertificateFile)(nil)
 )
 
 // CertificateFile contains the path to an existing certificate file which can
-// be loaded using [CertificateFile.LoadX509Certificate].
+// be loaded using [CertificateFile.LoadX509Certificate]. The contents of the
+// file must contain valid PEM encoded data.
 type CertificateFile string
 
 func (cf *CertificateFile) Set(s string) error {
@@ -36,11 +39,28 @@ func (cf CertificateFile) LoadX509Certificate() (*x509.Certificate, error) {
 		return nil, errors.WithKind(err, LoadCertificateError)
 	}
 
-	block, _ := pem.Decode(data)
+	data = decodePem(data)
+	if data == nil {
+		return nil, errors.WithKind(ErrNoCertificateInPEM, LoadCertificateError)
+	}
 
-	cert, err := x509.ParseCertificate(block.Bytes)
+	cert, err := x509.ParseCertificate(data)
 	if err != nil {
 		return nil, errors.WithKind(err, LoadCertificateError)
 	}
 	return cert, nil
+}
+
+func decodePem(data []byte) []byte {
+	for {
+		var block *pem.Block
+		block, data = pem.Decode(data)
+		if block == nil {
+			break
+		}
+		if block.Type == "CERTIFICATE" {
+			return block.Bytes
+		}
+	}
+	return nil
 }
