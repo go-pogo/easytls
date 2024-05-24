@@ -14,7 +14,7 @@ import (
 type Target uint8
 
 const (
-	TargetServer Target = iota
+	TargetServer Target = iota + 1
 	TargetClient
 
 	CACertError errors.Kind = "ca certificate error"
@@ -71,25 +71,30 @@ func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 		return nil
 	}
 
+	conf.InsecureSkipVerify = tc.InsecureSkipVerify
+
 	if tc.CACertFile != "" {
 		cert, err := tc.CACertFile.LoadX509Certificate()
 		if err != nil {
 			return errors.WithKind(err, CACertError)
 		}
-		if err = ValidateCA(cert); err != nil {
+		if valid, err := ValidateCA(cert); err != nil {
 			return errors.WithKind(err, CACertError)
+		} else if valid {
+			pool, err := getCertPool(conf, target)
+			if err != nil {
+				return err
+			}
+			pool.AddCert(cert)
 		}
-
-		pool, err := getCertPool(conf, target)
-		if err != nil {
-			return err
-		}
-		pool.AddCert(cert)
 	}
 
-	conf.InsecureSkipVerify = tc.InsecureSkipVerify
 	if tc.VerifyClient {
-		conf.ClientAuth = tls.RequireAndVerifyClientCert
+		if conf.InsecureSkipVerify {
+			conf.ClientAuth = tls.RequireAnyClientCert
+		} else {
+			conf.ClientAuth = tls.RequireAndVerifyClientCert
+		}
 	}
 
 	kp := KeyPair{CertFile: tc.CertFile, KeyFile: tc.KeyFile}
@@ -105,15 +110,22 @@ const (
 )
 
 // ValidateCA checks if the provided [x509.Certificate] can be used as CA
-// certificate.
-func ValidateCA(cert *x509.Certificate) error {
+// certificate. It return true when the certificate is valid, otherwise false.
+// Any reasons why the certificate is invalid will be returned as an error, or
+// nil when no non-nil certificate is provided.
+func ValidateCA(cert *x509.Certificate) (bool, error) {
+	if cert == nil {
+		return false, nil
+	}
+
+	var err error
 	if !cert.IsCA {
-		return errors.New(ErrNotMarkedAsCA)
+		err = errors.New(ErrNotMarkedAsCA)
 	}
 	if cert.KeyUsage == 0 || cert.KeyUsage&x509.KeyUsageCertSign == 0 {
-		return errors.New(ErrMissingCertSign)
+		err = errors.Append(err, errors.New(ErrMissingCertSign))
 	}
-	return nil
+	return err == nil, err
 }
 
 func getCertPool(conf *tls.Config, target Target) (*x509.CertPool, error) {
