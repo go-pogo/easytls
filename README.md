@@ -23,6 +23,8 @@ easytls
 
 
 Package `easytls` makes working with TLS for either servers or clients easy.
+It contains several sane and safe defaults for implementing TLS and using certificates, as well as _loader_ interfaces
+to accelerate the process of loading certificates from files or raw byte data.
 
 <hr>
 
