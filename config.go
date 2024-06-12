@@ -7,8 +7,9 @@ package easytls
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/go-pogo/errors"
 	"strconv"
+
+	"github.com/go-pogo/errors"
 )
 
 type Target uint8

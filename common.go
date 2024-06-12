@@ -8,9 +8,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/go-pogo/errors"
 	"net"
 	"time"
+
+	"github.com/go-pogo/errors"
 )
 
 // DefaultTLSConfig returns a modern preconfigured [tls.Config].

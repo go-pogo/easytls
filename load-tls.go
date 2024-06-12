@@ -6,6 +6,7 @@ package easytls
 
 import (
 	"crypto/tls"
+
 	"github.com/go-pogo/errors"
 )
 

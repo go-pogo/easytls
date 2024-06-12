@@ -6,8 +6,9 @@ package easytls
 
 import (
 	"crypto/x509/pkix"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCopyMissingSubjectFields(t *testing.T) {

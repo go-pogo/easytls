@@ -8,8 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
-	"github.com/go-pogo/errors"
 	"os"
+
+	"github.com/go-pogo/errors"
 )
 
 const ErrNoCertificateInPEM errors.Msg = "failed to find \"CERTIFICATE\" PEM block in data"
