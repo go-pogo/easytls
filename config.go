@@ -17,7 +17,9 @@ const (
 	TargetServer Target = iota + 1
 	TargetClient
 
-	CACertError errors.Kind = "ca certificate error"
+	ErrAddCACertToPool errors.Msg = "failed to add CA certificate to pool"
+	ErrNotMarkedAsCA   errors.Msg = "certificate is not marked as a CA"
+	ErrMissingCertSign errors.Msg = "certificate is missing the cert sign flag"
 )
 
 type InvalidTarget struct {
@@ -75,10 +77,10 @@ func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 	if tc.CACertFile != "" {
 		cert, err := tc.CACertFile.LoadX509Certificate()
 		if err != nil {
-			return errors.WithKind(err, CACertError)
+			return errors.Wrap(err, ErrAddCACertToPool)
 		}
 		if valid, err := ValidateCA(cert); err != nil {
-			return errors.WithKind(err, CACertError)
+			return errors.Wrap(err, ErrAddCACertToPool)
 		} else if valid {
 			pool, err := getCertPool(conf, target)
 			if err != nil {
@@ -102,11 +104,6 @@ func (tc Config) ApplyTo(conf *tls.Config, target Target) error {
 	}
 	return nil
 }
-
-const (
-	ErrNotMarkedAsCA   errors.Msg = "certificate is not marked as a CA certificate"
-	ErrMissingCertSign errors.Msg = "certificate is missing the cert sign flag"
-)
 
 // ValidateCA checks if the provided [x509.Certificate] can be used as CA
 // certificate. It return true when the certificate is valid, otherwise false.

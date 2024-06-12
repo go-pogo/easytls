@@ -33,7 +33,7 @@ func (kp KeyPair) LoadTLSCertificate() (*tls.Certificate, error) {
 	}
 
 	c, err := tls.LoadX509KeyPair(kp.CertFile, kp.KeyFile)
-	return &c, errors.WithKind(err, LoadCertificateError)
+	return &c, errors.Wrap(err, ErrLoadCertificate)
 }
 
 // ApplyTo adds the [KeyPair] certificate to the provided [tls.Config].
@@ -76,7 +76,7 @@ func (pb PEMBlocks) LoadTLSCertificate() (*tls.Certificate, error) {
 	}
 
 	c, err := tls.X509KeyPair(pb.Cert, pb.Key)
-	return &c, errors.WithKind(err, LoadCertificateError)
+	return &c, errors.Wrap(err, ErrLoadCertificate)
 }
 
 // ApplyTo adds the [PEMBlocks] certificates to the provided [tls.Config].

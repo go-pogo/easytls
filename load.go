@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	LoadCertificateError = "failed to load certificate"
+	ErrLoadCertificate = "failed to load certificate"
 )
 
 // TLSCertificateLoader loads a [tls.Certificate] from any source.

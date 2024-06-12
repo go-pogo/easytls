@@ -36,17 +36,17 @@ func (cf CertificateFile) GoString() string { return `easytls.CertificateFile("`
 func (cf CertificateFile) LoadX509Certificate() (*x509.Certificate, error) {
 	data, err := os.ReadFile(cf.String())
 	if err != nil {
-		return nil, errors.WithKind(err, LoadCertificateError)
+		return nil, errors.Wrap(err, ErrLoadCertificate)
 	}
 
 	data = decodePem(data)
 	if data == nil {
-		return nil, errors.WithKind(ErrNoCertificateInPEM, LoadCertificateError)
+		return nil, errors.Wrap(ErrNoCertificateInPEM, ErrLoadCertificate)
 	}
 
 	cert, err := x509.ParseCertificate(data)
 	if err != nil {
-		return nil, errors.WithKind(err, LoadCertificateError)
+		return nil, errors.Wrap(err, ErrLoadCertificate)
 	}
 	return cert, nil
 }
