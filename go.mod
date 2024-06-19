@@ -3,7 +3,7 @@ module github.com/go-pogo/easytls
 go 1.20
 
 require (
-	github.com/go-pogo/errors v0.11.0
+	github.com/go-pogo/errors v0.11.1
 	github.com/stretchr/testify v1.9.0
 )
 
